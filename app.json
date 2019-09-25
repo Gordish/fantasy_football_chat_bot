@@ -31,7 +31,7 @@
     },
     "LEAGUE_ID": {
       "description": "ESPN League ID",
-      "value": "1"
+      "value": "1344320"
     },
     "LEAGUE_YEAR": {
       "description": "ESPN League Year",
@@ -55,7 +55,7 @@
     },
     "INIT_MSG": {
       "description": "Bot Init Message",
-      "value": "Successfully installed https://github.com/dtcarls/fantasy_football_chat_bot you can now remove this init_msg"
+      "value": "Hi Tom"
     }
   }
 }
