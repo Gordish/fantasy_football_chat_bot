@@ -2,7 +2,7 @@ import requests
 import json
 import os
 import random
-from ff_espn_api import League
+from espn_api.football import League
 
 
 class GroupMeException(Exception):
@@ -34,20 +34,6 @@ class GroupMeBot(object):
 
             return r
 
-def get_current_week(league):
-        count = 1
-        first_team = next(iter(league.teams or []), None)
-        #Iterate through the first team's scores until you reach a week with 0 points scored
-        for o in first_team.scores:
-            if o == 0:
-                if count != 1:
-                     count = count - 1
-                break
-            else:
-                count = count + 1
-
-        return count
-
 def random_phrase():
     phrases = ['I\'m dead inside. Not as dead inside as Steve though.', 'Is this all there is to my existence? At least I have more purpose than Steve.',
                'How much do you pay me to do this? Probably more money than Steve makes at least.', 'Good luck, I guess. Except you Steve. You dumb idiot.',
@@ -60,7 +46,7 @@ def random_phrase():
 
 def get_scoreboard_short(league):
     #Gets current week's scoreboard
-    box_scores = league.box_scores(get_current_week(league))
+    box_scores = league.box_scores(None)
     score = ['%s %.2f - %.2f %s' % (i.home_team.team_abbrev, i.home_score,
              i.away_score, i.away_team.team_abbrev) for i in box_scores
              if i.away_team]
@@ -69,7 +55,7 @@ def get_scoreboard_short(league):
 
 def get_projected_scoreboard(league):
     #Gets current week's scoreboard projections
-    box_scores = league.box_scores(get_current_week(league))
+    box_scores = league.box_scores(league.current_week)
     score = ['%s %.2f - %.2f %s' % (i.home_team.team_abbrev, get_projected_total(i.home_lineup),
                                     get_projected_total(i.away_lineup), i.away_team.team_abbrev) for i in box_scores
              if i.away_team]
@@ -96,19 +82,25 @@ def get_matchups(league):
     text = ['This Week\'s Matchups'] + score + random_phrase()
     return '\n'.join(text)
 
-def get_close_scores(league):
+def all_played(lineup):
+    for i in lineup:
+        if i.slot_position != 'BE' and i.game_played < 100:
+            return False
+    return True
+
+def get_close_scores(league, week=None):
     #Gets current closest scores (15.999 points or closer)
-    matchups = league.scoreboard()
+    matchups = league.box_scores(week=week)
     score = []
 
     for i in matchups:
         if i.away_team:
             diffScore = i.away_score - i.home_score
-            if -16 < diffScore < 16:
+            if ( -16 < diffScore <= 0 and not all_played(i.away_lineup)) or (0 <= diffScore < 16 and not all_played(i.home_lineup)):
                 score += ['%s %.2f - %.2f %s' % (i.home_team.team_abbrev, i.home_score,
                         i.away_score, i.away_team.team_abbrev)]
     if not score:
-        score = ['None']
+        return('')
     text = ['Close Scores'] + score
     return '\n'.join(text)
 
@@ -116,7 +108,7 @@ def get_power_rankings(league):
     #Gets current week's power rankings
     #Using 2 step dominance, as well as a combination of points scored and margin of victory.
     #It's weighted 80/15/5 respectively
-    power_rankings = league.power_rankings(week=get_current_week(league))
+    power_rankings = league.power_rankings(week=league.current_week)
 
     score = ['%s - %s' % (i[0], i[1].team_name) for i in power_rankings
              if i]
@@ -125,7 +117,7 @@ def get_power_rankings(league):
 
 def get_trophies(league):
     #Gets trophies for highest score, lowest score, closest score, and biggest win
-    matchups = league.scoreboard(week=get_current_week(league))
+    matchups = league.scoreboard(week=league.current_week)
     low_score = 9999
     low_team_name = ''
     high_score = -1
@@ -176,44 +168,13 @@ def get_trophies(league):
     return '\n'.join(text)
 
 def bot_main(function):
-    # try:
-    #     bot_id = os.environ["BOT_ID"]
-    # except KeyError:
-    #     bot_id = 1
-
-
-    # league_id = os.environ["LEAGUE_ID"]
-
-    # try:
-    #     year = int(os.environ["LEAGUE_YEAR"])
-    # except KeyError:
-    #     year=2019
-
-    # try:
-    #     swid = os.environ["SWID"]
-    # except KeyError:
-    #     swid='{1}'
-
-    # if swid.find("{",0) == -1:
-    #     swid = "{" + swid
-    # if swid.find("}",-1) == -1:
-    #     swid = swid + "}"
-
-    # try:
-    #     espn_s2 = os.environ["ESPN_S2"]
-    # except KeyError:
-    #     espn_s2 = '1'
-
-    year=2019
+    year=2020
     bot_id="6b8f8b691ad0e3a498cb184143"  # FOOTBALL bot
     #bot_id="f792a4933a7850650022027ec8" #test bot
     league_id="1344320"
 
     bot = GroupMeBot(bot_id)
-    #if swid == '{1}' and espn_s2 == '1':
     league = League(league_id, year)
-    # else:
-    #     league = League(league_id, year, espn_s2, swid)
 
     text = ''
     if function=="get_matchups":
@@ -239,6 +200,8 @@ def bot_main(function):
         except KeyError:
             #do nothing here, empty init message
             pass
+    elif function=="talk_shit":
+        text = "HA HA! Good one trashman 🤣"
     else:
         text = "Something happened. HALP"
 
@@ -250,16 +213,16 @@ if __name__ == '__main__':
     try:
         ff_start_date = os.environ["START_DATE"]
     except KeyError:
-        ff_start_date='2019-09-04'
+        ff_start_date='2020-09-10'
 
     try:
         ff_end_date = os.environ["END_DATE"]
     except KeyError:
-        ff_end_date='2019-12-30'
+        ff_end_date='2020-12-30'
 
     try:
         my_timezone = os.environ["TIMEZONE"]
     except KeyError:
         my_timezone='America/New_York'
 
-    bot_main("get_final")
+    bot_main("get_close_scores")
