@@ -47,11 +47,17 @@ def random_phrase():
 def get_scoreboard_short(league, week=None):
     #Gets current week's scoreboard
     box_scores = league.box_scores(week=week)
-    score = ['%s %.2f - %.2f %s' % (i.home_team.team_abbrev, i.home_score,
-             i.away_score, i.away_team.team_abbrev) for i in box_scores
-             if i.away_team]
+    score = [format_score(i) for i in box_scores if i.away_team]
     text = ['Score Update'] + score
     return '\n'.join(text)
+
+def format_score(box_score):
+    score = '%s %.2f - %.2f %s' % (box_score.home_team.team_abbrev, box_score.home_score,
+             box_score.away_score, box_score.away_team.team_abbrev)
+    if box_score.away_score > box_score.home_score:
+        score = '%s %.2f - %.2f %s' % (box_score.away_team.team_abbrev, box_score.away_score,
+                 box_score.home_score, box_score.home_team.team_abbrev)
+    return score
 
 def get_projected_scoreboard(league, week=None):
     #Gets current week's scoreboard projections
@@ -145,8 +151,7 @@ def get_trophies(league, week=None):
         if i.away_score < low_score:
             low_score = i.away_score
             low_team_name = i.away_team.team_name
-        if i.away_score - i.home_score != 0 and \
-            abs(i.away_score - i.home_score) < closest_score:
+        if i.away_score - i.home_score != 0 and abs(i.away_score - i.home_score) < closest_score:
             closest_score = abs(i.away_score - i.home_score)
             if i.away_score - i.home_score < 0:
                 close_winner = i.home_team.team_name
