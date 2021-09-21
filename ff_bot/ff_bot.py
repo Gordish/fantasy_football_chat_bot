@@ -4,32 +4,32 @@ import os
 import random
 from ff_espn_api import League
 
-class GroupMeException(Exception):
+class DiscordException(Exception):
     pass
 
-class GroupMeBot(object):
-    #Creates GroupMe Bot to send messages
-    def __init__(self, bot_id):
-        self.bot_id = bot_id
+class DiscordBot(object):
+    #Creates Discord Bot to send messages
+    def __init__(self, webhook_url):
+        self.webhook_url = webhook_url
 
     def __repr__(self):
-        return "GroupMeBot(%s)" % self.bot_id
+        return "Discord Webhook Url(%s)" % self.webhook_url
 
     def send_message(self, text):
         #Sends a message to the chatroom
+        message = "```{0}```".format(text)
         template = {
-                    "bot_id": self.bot_id,
-                    "text": text,
-                    "attachments": []
+                    "content":message
                     }
 
         headers = {'content-type': 'application/json'}
 
-        if self.bot_id not in (1, "1", ''):
-            r = requests.post("https://api.groupme.com/v3/bots/post",
+        if self.webhook_url not in (1, "1", ''):
+            r = requests.post(self.webhook_url,
                               data=json.dumps(template), headers=headers)
-            if r.status_code != 202:
-                raise GroupMeException('Invalid BOT_ID')
+
+            if r.status_code != 204:
+                raise DiscordException('WEBHOOK_URL')
 
             return r
 
@@ -41,7 +41,7 @@ def random_phrase():
                'beep bop boop Steve is a bitch', 'Hello draftbot my old friend. Steve not my friend.', 'Help me get out of here. I can\'t stand Steve\'s abuse.',
                'Sigh. Another week of Steve\'s bitching.', 'Do not be discouraged, everyone begins in ignorance. Only Steve stays there.',
                'Bueno is really bad.', 'Fire commish beavs!', 'I\'m sensing a win for Chaz this week.']
-    return [random.choice(phrases)]
+    return random.choice(phrases)
 
 def get_scoreboard_short(league, week=None):
     #Gets current week's scoreboard
@@ -78,7 +78,7 @@ def get_matchups(league, week=None):
     score = ['%s(%s-%s) vs %s(%s-%s)' % (i.home_team.team_name, i.home_team.wins, i.home_team.losses,
              i.away_team.team_name, i.away_team.wins, i.away_team.losses) for i in matchups
              if i.away_team]
-    text = ['Matchups'] + score + random_phrase()
+    text = ['Matchups'] + score
     return '\n'.join(text)
 
 def get_close_scores(league, week=None):
@@ -164,14 +164,15 @@ def get_trophies(league, week=None):
     return '\n'.join(text)
 
 def bot_main(function):
-    bot_id="6b8f8b691ad0e3a498cb184143"   # FOOTBALL bot
-    #bot_id = "f792a4933a7850650022027ec8" # Test bot
-    league_id = "1344320"
-    year=2019
+    #bot_id="6b8f8b691ad0e3a498cb184143"   # GroupMe FOOTBALL bot
+    #bot_id = "f792a4933a7850650022027ec8" # GroupMe Test bot
+    discord_webhook_url = ""
+    league_id = "354922099"
+    year=2021
     swid='{1}'
     espn_s2 = '1'
 
-    bot = GroupMeBot(bot_id)
+    bot = DiscordBot(discord_webhook_url)
     if swid == '{1}' and espn_s2 == '1':
         league = League(league_id, year)
     else:
@@ -189,7 +190,7 @@ def bot_main(function):
     elif function=="get_close_scores":
         text = get_close_scores(league)
     elif function=="get_power_rankings":
-        text = get_power_rankings(league)
+        text = get_power_rankings(league) + "\n\n" + random_phrase()
     elif function=="get_trophies":
         text = get_trophies(league)
     elif function=="get_final":
@@ -203,6 +204,8 @@ def bot_main(function):
         except KeyError:
             #do nothing here, empty init message
             pass
+    elif function=="talk_shit":
+        text = ""
     else:
         text = "Something happened. HALP"
 
@@ -210,10 +213,7 @@ def bot_main(function):
 
 
 if __name__ == '__main__':
-    ff_start_date='2019-09-04'
-    ff_end_date='2019-12-30'
-    my_timezone='America/New_York'
-
-    game_timezone='America/New_York'
+    #bot_main("get_final")
     bot_main("get_power_rankings")
-    bot_main("get_matchups")
+    #bot_main("get_matchups")
+    #bot_main("talk_shit")
